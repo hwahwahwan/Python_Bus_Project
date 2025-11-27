@@ -15,6 +15,7 @@ from src.core.session_manager import initialize_session_state, is_stop_selected,
 from src.ui.sidebar import render_sidebar
 from src.ui.bus_cards import render_bus_arrival_section
 from src.ui.map_view import render_map_section
+from src.ui.bus_tracker import render_bus_tracker
 from src.utils.constants import (
     PAGE_TITLE,
     PAGE_ICON,
@@ -32,20 +33,14 @@ def configure_page() -> None:
     )
 
 
-def render_header() -> None:
-    """메인 헤더를 렌더링합니다."""
-    st.title(f"{PAGE_ICON} {PAGE_TITLE}")
-    st.caption("정류장 도착정보 · 버스 실시간 위치 조회")
-
-
 def render_stop_not_selected_message() -> None:
     """정류장 미선택 시 안내 메시지를 표시합니다."""
     st.info(INFO_MSG_SELECT_STOP)
 
 
-def render_main_content(target_stop) -> None:
+def render_stop_dashboard(target_stop) -> None:
     """
-    메인 콘텐츠를 렌더링합니다.
+    정류장 도착정보 대시보드를 렌더링합니다.
 
     Args:
         target_stop: 선택된 정류장 정보
@@ -79,27 +74,36 @@ def main() -> None:
     # 2. 세션 상태 초기화
     initialize_session_state()
 
-    # 3. 데이터 로드
-    try:
-        df = load_stops_data()
-    except Exception as e:
-        st.error(f"❌ 데이터 로드 실패: {e}")
-        st.info("💡 data/stops_processed.csv 파일이 존재하는지 확인해주세요.")
-        st.stop()
+    # 3. 메인 헤더
+    st.title(f"{PAGE_ICON} {PAGE_TITLE}")
+    st.caption("정류장 도착정보 · 버스 실시간 위치 조회")
 
-    # 4. 사이드바 렌더링 (정류장 선택)
-    target_stop = render_sidebar(df)
+    # 4. 탭 네비게이션
+    tab1, tab2 = st.tabs(["정류장 조회", "실시간 버스 추적"])
 
-    # 5. 메인 헤더
-    render_header()
+    with tab1:
+        # 정류장 도착정보 대시보드
+        try:
+            df = load_stops_data()
+        except Exception as e:
+            st.error(f"❌ 데이터 로드 실패: {e}")
+            st.info("💡 data/stops_processed.csv 파일이 존재하는지 확인해주세요.")
+            st.stop()
 
-    # 6. 정류장 선택 여부에 따른 콘텐츠 표시
-    if not is_stop_selected() or target_stop is None:
-        render_stop_not_selected_message()
-        st.stop()
+        # 사이드바 렌더링 (정류장 선택)
+        target_stop = render_sidebar(df)
 
-    # 7. 메인 콘텐츠 렌더링
-    render_main_content(target_stop)
+        # 정류장 선택 여부에 따른 콘텐츠 표시
+        if not is_stop_selected() or target_stop is None:
+            render_stop_not_selected_message()
+            st.stop()
+
+        # 정류장 대시보드 렌더링
+        render_stop_dashboard(target_stop)
+
+    with tab2:
+        # 버스 위치 추적 대시보드
+        render_bus_tracker()
 
 
 if __name__ == "__main__":

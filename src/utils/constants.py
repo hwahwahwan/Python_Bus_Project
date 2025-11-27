@@ -44,7 +44,7 @@ MAX_DISPLAY_BUSES = 4
 DEFAULT_ZOOM_LEVEL = 15
 MAP_POINT_COLOR = [0, 100, 255, 200]  # 파란색 RGBA
 MAP_POINT_RADIUS = 15
-MAP_STYLE = "mapbox://styles/mapbox/streets-v11"
+MAP_STYLE = "light"  # PyDeck 내장 스타일 (Mapbox 토큰 불필요)
 
 # ============================================================================
 # 버스 타입 상수
@@ -107,6 +107,36 @@ FIELD_LAT = "lat"
 FIELD_LON = "lon"
 FIELD_REGION_NAME = "region_name"
 FIELD_DISPLAY_NAME = "display_name"
+
+# ============================================================================
+# 버스 추적 관련 상수
+# ============================================================================
+# API
+BUS_POSITION_API_URL = "http://ws.bus.go.kr/api/rest/buspos/getBusPosByRtid"
+AUTO_REFRESH_INTERVAL_SECONDS = 60
+
+# 노선 데이터
+ROUTE_STATIONS_DATA_PATH = "data/route_stations_processed.csv"
+
+# 노선 경로 (PathLayer)
+ROUTE_PATH_COLOR = [34, 139, 34]  # 초록색
+ROUTE_PATH_WIDTH = 5
+ROUTE_PATH_MIN_WIDTH = 2
+ROUTE_PATH_MAX_WIDTH = 10
+
+# 버스 마커 (ScatterplotLayer)
+BUS_MARKER_COLOR = [255, 0, 0, 200]  # 빨간색
+BUS_MARKER_RADIUS = 20
+
+# 정류장 마커 (현재 정류장 - 파란색)
+CURRENT_STOP_RADIUS = 25
+
+# 세션 키 (버스 추적용)
+SESSION_KEY_SELECTED_ROUTE = "selected_route"
+SESSION_KEY_BUS_POSITIONS = "bus_positions"
+SESSION_KEY_AUTO_REFRESH_ENABLED = "auto_refresh_enabled"
+SESSION_KEY_LAST_API_CALL = "last_api_call"
+SESSION_KEY_ROUTE_DATA = "route_data"
 
 # ============================================================================
 # 기타 상수

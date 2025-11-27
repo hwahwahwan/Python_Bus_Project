@@ -8,14 +8,15 @@ Streamlit 캐싱을 활용하여 성능을 최적화합니다.
 import os
 import streamlit as st
 import pandas as pd
-from typing import Optional
+from typing import Optional, List
 
 from src.utils.constants import (
     DATA_PATH,
     STATION_ID_DTYPE,
     ARS_ID_DTYPE,
     FIELD_REGION_NAME,
-    FIELD_DISPLAY_NAME
+    FIELD_DISPLAY_NAME,
+    ROUTE_STATIONS_DATA_PATH
 )
 from src.utils.validators import is_valid_dataframe, has_required_columns
 
@@ -140,3 +141,99 @@ def get_stop_by_display_name(
         return None
 
     return matches.iloc[0]
+
+
+# ============================================================================
+# 노선 데이터 로딩 함수 (버스 추적용)
+# ============================================================================
+
+@st.cache_data
+def load_route_stations_data() -> pd.DataFrame:
+    """
+    전처리된 노선별 정류장 데이터를 로드합니다.
+
+    Returns:
+        pd.DataFrame: 노선별 정류장 데이터
+            컬럼: route_id, route_no, station_seq, ars_id, station_name, lat, lon
+
+    Raises:
+        FileNotFoundError: 데이터 파일이 없을 경우
+        ValueError: 데이터가 비어있을 경우
+    """
+    if not os.path.exists(ROUTE_STATIONS_DATA_PATH):
+        raise FileNotFoundError(
+            f"노선 데이터 파일을 찾을 수 없습니다: {ROUTE_STATIONS_DATA_PATH}"
+        )
+
+    df = pd.read_csv(
+        ROUTE_STATIONS_DATA_PATH,
+        dtype={'route_id': str, 'ars_id': str}
+    )
+
+    df.columns = df.columns.str.strip()
+
+    if df.empty:
+        raise ValueError("노선 데이터가 비어있습니다.")
+
+    return df
+
+
+def get_route_list() -> List[str]:
+    """
+    노선 번호 목록을 추출합니다.
+
+    Returns:
+        List[str]: 정렬된 노선 번호 목록
+    """
+    df = load_route_stations_data()
+    return sorted(df['route_no'].unique().tolist())
+
+
+def get_route_data(route_no: str) -> pd.DataFrame:
+    """
+    특정 노선의 모든 정류장 정보를 조회합니다.
+
+    Args:
+        route_no: 버스 노선 번호 (예: "143")
+
+    Returns:
+        pd.DataFrame: 순번대로 정렬된 정류장 데이터
+    """
+    df = load_route_stations_data()
+    route_df = df[df['route_no'] == route_no].copy()
+    route_df = route_df.sort_values('station_seq')
+    return route_df
+
+
+def get_route_id_by_number(route_no: str) -> Optional[str]:
+    """
+    노선 번호로 노선 ID를 조회합니다.
+
+    Args:
+        route_no: 버스 노선 번호 (예: "143")
+
+    Returns:
+        Optional[str]: 노선 ID 또는 None
+    """
+    df = load_route_stations_data()
+    route_data = df[df['route_no'] == route_no]
+
+    if len(route_data) > 0:
+        return route_data.iloc[0]['route_id']
+
+    return None
+
+
+def get_routes_by_stop_ars_id(ars_id: str) -> List[str]:
+    """
+    특정 정류장을 경유하는 버스 노선 목록을 반환합니다.
+
+    Args:
+        ars_id: 정류장 ARS ID (예: "23111")
+
+    Returns:
+        List[str]: 해당 정류장을 경유하는 노선 번호 목록 (정렬됨)
+    """
+    df = load_route_stations_data()
+    routes = df[df['ars_id'] == ars_id]['route_no'].unique().tolist()
+    return sorted(routes)

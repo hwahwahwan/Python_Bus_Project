@@ -106,13 +106,4 @@ def render_sidebar(df: pd.DataFrame) -> Optional[pd.Series]:
         )
         st.success(success_message)
 
-        # 키보드 네비게이션 안내
-        with st.expander("⌨️ 키보드 단축키"):
-            st.markdown("""
-            - **Tab**: 다음 요소로 이동
-            - **Shift + Tab**: 이전 요소로 이동
-            - **↑/↓**: 드롭다운 항목 이동
-            - **Enter**: 선택 확정
-            """)
-
         return target_stop
