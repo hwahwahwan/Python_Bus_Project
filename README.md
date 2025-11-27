@@ -17,7 +17,7 @@ project/
 │   ├── stops.csv                 # 원본: 서울시 버스 정류소 위치 정보
 │   ├── routes.csv                # 원본: 버스 노선 정보
 │   ├── route_stations.csv        # 원본: 노선별 정류소 정보
-│   └── stops_processed.csv       # ✅ 전처리 완료: 정류소 데이터 (12,880개)
+│   └── stops_processed.csv       # ✅ 전처리 완료: 정류소 데이터 (12,859개)
 │
 ├── preprocessing/                # 🛠️ 데이터 전처리 모듈
 │   ├── README.md                 # 전처리 프로세스 가이드
@@ -40,7 +40,7 @@ project/
 ### 1. 데이터 전처리
 - 버스 정류소 데이터 정제 및 변환
 - ARS_ID 5자리 제로패딩
-- 카카오 로컬 API를 통한 지역 정보 추출
+- 카카오 로컬 API를 통한 지역 정보 추출 (API에서도 찾을 수 없는 21개 행 삭제)
 - 정류소명 + ARS_ID 병합 (중복 방지)
 
 ### 2. 버스 위치 조회 (개발 예정)
@@ -97,7 +97,7 @@ python preprocessing/preprocess_stops.py
 | region_name | 구 이름 | "강북구" |
 | display_name | 표시명 | "우이동(09500)" |
 
-**총 데이터**: 12,880개 정류소
+**총 데이터**: 12,859개 정류소
 
 ---
 
