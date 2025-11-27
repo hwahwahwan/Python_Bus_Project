@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 가상환경
+venv/
+env/
+ENV/
+.venv
+
+# 환경변수
+.env
+
+# 데이터 파일 (전처리 결과)
+data/stops_processed.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 기타
+/작업계획/
+
+# ------------------------------------------------
+# [추가] 보안 및 데이터 관리 보강
+# ------------------------------------------------
+
+# 1. Streamlit 배포 시 자동 생성되는 비밀키 파일 (유출 절대 금지)
+.streamlit/secrets.toml
+
+# 2. 원본 엑셀/CSV 파일 전체 무시 (용량 초과 및 저작권 보호)
+# (기존에는 결과 파일만 막혀있어서, 다운받은 원본들도 같이 막아줍니다)
+data/*.csv
+data/*.xlsx
+data/*.xls
+
+# 3. 데이터 분석(Jupyter) 시 생기는 임시 폴더
+.ipynb_checkpoints/
