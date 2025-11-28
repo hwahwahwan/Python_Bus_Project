@@ -1,5 +1,40 @@
 # 변경 이력 (Changelog)
 
+## [2025.11.28] - 버스 카드 클릭 및 애니메이션 기능 추가
+
+### 추가 (Added)
+- **버스 카드 추적 버튼**: 각 버스 카드에 "🔍 [노선]번 추적" 버튼 추가
+  - 파일: `src/ui/bus_cards.py` (lines 73-78)
+  - 클릭 시 실시간 버스 추적 탭으로 자동 연동
+  - `busRouteId` 필드 추가로 정확한 노선 ID 전달
+- **탭 전환 알림**: 버스 선택 시 탭 전환 안내 메시지 표시
+  - 파일: `app.py` (lines 84-90)
+- **버스 마커 애니메이션**: 선형 보간을 통한 부드러운 마커 이동
+  - 파일: `src/ui/bus_tracker.py` (_interpolate_positions 함수)
+  - 0.5초 간격으로 위치 보간
+  - 지도 줌/위치 상태 유지
+- **세션 관리 함수**: 애니메이션용 상태 관리 함수 6개 추가
+  - 파일: `src/core/session_manager.py` (lines 263-367)
+
+### 수정 (Changed)
+- **사이드바 노선 선택 제거**: 버스 추적 탭에서 사이드바 노선 선택 UI 제거
+  - 파일: `src/ui/bus_tracker.py`
+  - `_render_route_selector()` 함수 완전 삭제
+  - 더 간편한 사용자 경험 제공
+- **지도 재중심 버튼 제거**: 뷰 상태 자동 유지로 불필요
+  - 파일: `src/ui/bus_tracker.py`
+- **API 응답 구조 개선**: `busRouteId` 필드 파싱 추가
+  - 파일: `src/api/bus_api.py::parse_bus_data()` (line 48)
+- **지도 뷰 상태 파라미터 추가**: view_state 파라미터로 줌/위치 유지
+  - 파일: `src/ui/map_view.py::create_bus_tracking_map()` (lines 273-339)
+
+### 수정 (Fixed)
+- ✅ 버스 마커 순간이동 문제 (선형 보간으로 해결)
+- ✅ 지도 줌/위치가 60초마다 초기화되던 문제
+- ✅ 버스 카드에서 추적 버튼이 표시되지 않던 문제
+
+---
+
 ## [2025.11.28] - 버스 위치 추적 기능 개선
 
 ### 추가 (Added)

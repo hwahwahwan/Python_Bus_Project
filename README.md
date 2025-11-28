@@ -6,20 +6,22 @@
 
 ## 📁 프로젝트 구조
 
-> 📖 상세한 구조는 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)를 참고하세요.
-
 ```
 project/
-├── README.md                      # 프로젝트 메인 문서
-├── CHANGELOG.md                   # ✅ 변경 이력
-├── PROJECT_STRUCTURE.md           # ✅ 프로젝트 구조 상세 가이드
-├── test_bus_tracker.py            # ✅ 버스 추적 기능 테스트
-├── test_results_summary.md        # ✅ 테스트 결과 요약
+├── README.md                      # 프로젝트 메인 문서 (시작 가이드)
 ├── app.py                         # ✅ 메인 Streamlit 애플리케이션
+├── test_bus_tracker.py            # ✅ 버스 추적 기능 테스트 스크립트
 ├── .env                          # 환경변수 (API 키 등)
 ├── .env.example                  # 환경변수 예시 파일
 ├── .gitignore                    # Git 제외 파일 목록
 ├── requirements.txt              # Python 패키지 의존성
+│
+├── docs/                         # 📚 프로젝트 문서
+│   ├── CHANGELOG.md              # 변경 이력 (버전별 업데이트 내용)
+│   ├── PROJECT_STRUCTURE.md      # 프로젝트 구조 상세 가이드
+│   ├── ARCHITECTURE.md           # 아키텍처 설계 문서
+│   ├── PROJECT_SUMMARY.md        # 프로젝트 요약 문서
+│   └── test_results_summary.md   # 테스트 결과 요약
 │
 ├── src/                          # 🎯 소스 코드 루트
 │   ├── utils/                    # 공통 유틸리티
@@ -36,9 +38,9 @@ project/
 │   │
 │   └── ui/                       # UI 컴포넌트
 │       ├── sidebar.py            # ✅ 왼쪽 사이드바 (검색)
-│       ├── bus_cards.py          # ✅ 버스 도착 정보 카드
+│       ├── bus_cards.py          # ✅ 버스 도착 정보 카드 (추적 버튼 포함)
 │       ├── map_view.py           # ✅ 지도 뷰 (PyDeck)
-│       └── bus_tracker.py        # ✅ 실시간 버스 위치 추적
+│       └── bus_tracker.py        # ✅ 실시간 버스 위치 추적 (애니메이션)
 │
 ├── data/                         # 📊 데이터 폴더
 │   ├── stops.csv                 # 원본: 서울시 버스 정류소 위치 정보
@@ -54,6 +56,8 @@ project/
 │   ├── preprocess_stops.py       # 정류장 데이터 전처리 스크립트
 │   └── preprocess_routes.py      # ✅ 노선 데이터 전처리 스크립트
 │
+├── legacy/                       # 🗄️ 레거시 코드 (참고용)
+│
 ├── venv/                         # 🐍 Python 가상환경
 │
 └── 작업계획/                      # 📝 프로젝트 계획 및 문서
@@ -61,6 +65,20 @@ project/
     └── 발표자료 정리/
         └── 데이터 전처리 알고리즘.txt
 ```
+
+---
+
+## 📚 문서 가이드
+
+프로젝트 관련 문서는 `docs/` 폴더에 정리되어 있습니다:
+
+| 문서 | 역할 | 언제 보면 좋을까? |
+|------|------|------------------|
+| **[CHANGELOG.md](docs/CHANGELOG.md)** | 버전별 변경 이력 추적 | 프로젝트 업데이트 내용을 확인할 때 |
+| **[PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)** | 프로젝트 구조 상세 가이드 | 코드베이스 구조를 이해하고 싶을 때 |
+| **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | 시스템 아키텍처 설계 문서 | 전체 시스템 설계와 모듈 구조를 파악할 때 |
+| **[PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)** | 프로젝트 개요 및 요약 | 프로젝트 전체 개요를 빠르게 파악할 때 |
+| **[test_results_summary.md](docs/test_results_summary.md)** | 테스트 결과 요약 | 기능 테스트 결과를 확인할 때 |
 
 ---
 
@@ -85,6 +103,7 @@ project/
   - 저상버스 구분 (초록색 배지)
   - 막차 여부 표시
   - 첫 번째 버스는 파란색으로 강조
+  - **🔍 추적 버튼**: 각 버스 카드에서 바로 실시간 추적 가능
 - **지도 시각화**: PyDeck을 사용한 정류장 위치 표시
 - **자동 새로고침**: 정류장 선택 시 자동으로 버스 정보 조회
 
@@ -94,6 +113,10 @@ project/
   - 노선 경로 표시 (초록색 PathLayer)
   - 버스 위치 마커 (빨간색 ScatterplotLayer)
   - 정류장 위치 마커 (파란색)
+- **부드러운 마커 애니메이션**:
+  - 0.5초마다 선형 보간 적용
+  - 버스가 자연스럽게 이동하는 효과
+  - 지도 줌/위치 상태 유지
 - **실시간 정보 테이블**:
   - 차량번호, 버스 유형 (일반/저상)
   - 현재 위치 (정류장 순서)
@@ -101,11 +124,11 @@ project/
   - GPS 좌표 (위도/경도)
 - **자동 새로고침 기능**:
   - 60초마다 자동 API 호출
-  - 5초마다 화면 갱신으로 부드러운 업데이트
+  - 0.5초마다 화면 갱신으로 부드러운 애니메이션
   - 수동 새로고침 버튼 제공
-- **스마트 노선 필터링**:
-  - 정류장 선택 시 해당 정류장을 경유하는 노선만 표시
-  - 전체 노선 목록 조회 가능
+- **간편한 노선 선택**:
+  - 정류장 조회 탭에서 버스 카드의 "🔍 추적" 버튼 클릭
+  - 실시간 버스 추적 탭으로 자동 연동
 
 ---
 
@@ -198,27 +221,21 @@ streamlit run app.py
 
 ## 🔧 최근 업데이트 (2025.11.28)
 
-### 버스 위치 추적 기능 개선
+### 1. 버스 카드 클릭 기능 추가 ✅
+- 각 버스 카드 하단에 **"🔍 [노선번호]번 추적"** 버튼 추가
+- 버튼 클릭 시 실시간 버스 추적 탭으로 자동 연동
+- 사이드바 노선 선택 UI 제거로 더 간편한 사용자 경험
 
-#### 1. HTML 테이블 렌더링 수정 ✅
-- **문제**: 차량 운행 정보가 HTML 태그로 표시됨
-- **해결**: 자동 새로고침 로직 최적화로 정상 렌더링
+### 2. 버스 마커 애니메이션 구현 ✅
+- **부드러운 마커 이동**: 0.5초 간격 선형 보간 적용
+- **지도 상태 유지**: 줌/위치가 60초마다 초기화되지 않음
+- **API 최적화**: 60초마다 API 호출, 0.5초마다 화면 갱신
 
-#### 2. API 호출 최적화 ✅
-- 호출 간격: 30초 → **60초**로 변경
-- 서버 부하 감소 및 API 사용량 최적화
+### 3. API 응답 개선 ✅
+- `busRouteId` 필드 추가로 정확한 노선 ID 전달
+- 버스 추적 기능 안정성 향상
 
-#### 3. 자동 새로고침 로직 개선 ✅
-- API는 60초마다 호출
-- 화면은 5초마다 갱신하여 부드러운 업데이트 제공
-- 불필요한 rerun 제거로 성능 향상
-
-#### 4. 지도 깜빡임 해결 ✅
-- 1초마다 rerun → 5초 간격으로 변경
-- 흰색 깜빡임 현상 대폭 감소
-- 사용자 경험 개선
-
-#### 5. PyDeck Deprecated 경고 해결 ✅
+### 4. PyDeck Deprecated 경고 해결 ✅
 - `get_color` → `get_fill_color`로 변경
 - 최신 PyDeck API 스펙 적용
 
@@ -228,6 +245,8 @@ streamlit run app.py
 source venv/bin/activate
 python test_bus_tracker.py
 ```
+
+자세한 변경 이력은 [CHANGELOG.md](docs/CHANGELOG.md)를 참고하세요.
 
 ---
 
@@ -247,4 +266,3 @@ python test_bus_tracker.py
 ## 📞 문의
 
 프로젝트 관련 문의사항이 있으시면 이슈를 등록해주세요.
-

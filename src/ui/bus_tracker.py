@@ -43,20 +43,20 @@ def render_bus_tracker() -> None:
     """버스 추적 메인 화면을 렌더링합니다."""
     initialize_bus_tracking_state()
 
-    # 사이드바
-    with st.sidebar:
-        st.header("🔍 노선 선택")
-        _render_route_selector()
-
     # 메인 콘텐츠
     selected_route = get_selected_route()
 
     if not selected_route:
-        st.info("👈 왼쪽 사이드바에서 노선을 선택해주세요.")
+        st.info("👈 '정류장 조회' 탭에서 버스 카드의 '🔍 추적' 버튼을 눌러 노선을 선택해주세요.")
         return
 
     # 노선 정보 박스
-    route_id = get_route_id_by_number(selected_route)
+    # 세션에서 route_id 가져오기 (버스 카드에서 저장한 값)
+    route_id = st.session_state.get('selected_route_id')
+    if not route_id:
+        # 없으면 노선 번호로 조회 시도 (하위 호환성)
+        route_id = get_route_id_by_number(selected_route)
+
     bus_positions = get_bus_positions()
     _render_route_info_box(selected_route, route_id or "N/A", len(bus_positions))
 
@@ -95,47 +95,6 @@ def render_bus_tracker() -> None:
     # 자동 새로고침이 켜져있으면 0.5초마다 rerun (애니메이션)
     if is_auto_refresh_enabled():
         time.sleep(ANIMATION_INTERVAL_SECONDS)  # 0.5초 대기
-        st.rerun()
-
-
-def _render_route_selector() -> None:
-    """노선 선택 드롭다운을 렌더링합니다."""
-    try:
-        # 정류장 조회 탭에서 선택된 정류장 확인
-        target_stop = get_target_stop()
-
-        # 정류장이 선택되어 있으면 해당 정류장 노선만 필터링
-        if target_stop is not None and hasattr(target_stop, 'ars_id'):
-            ars_id = target_stop.ars_id
-            route_list = get_routes_by_stop_ars_id(ars_id)
-
-            if not route_list:
-                st.warning(f"⚠️ 선택한 정류장({target_stop.station_name})을 경유하는 노선이 없습니다.")
-                st.caption("💡 모든 노선을 보려면 '정류장 조회' 탭에서 정류장 선택을 해제하세요.")
-                return
-
-            st.caption(f"📍 {target_stop.station_name} 경유 노선")
-        else:
-            # 정류장이 선택되지 않았으면 전체 노선 표시
-            route_list = get_route_list()
-            st.caption("💡 모든 버스 노선")
-
-    except Exception as e:
-        st.error(f"❌ 노선 데이터 로드 실패: {e}")
-        return
-
-    if not route_list:
-        st.error("❌ 노선 데이터를 불러올 수 없습니다.")
-        return
-
-    selected = st.selectbox(
-        "버스 노선",
-        options=["선택하세요"] + route_list,
-        key="route_selector"
-    )
-
-    if selected != "선택하세요" and selected != get_selected_route():
-        set_selected_route(selected)
         st.rerun()
 
 
@@ -234,7 +193,11 @@ def _interpolate_positions(
 
 def _fetch_and_update_bus_positions(route_no: str) -> None:
     """버스 위치 정보를 API에서 가져와 세션에 저장합니다 (상태 업데이트 포함)."""
-    route_id = get_route_id_by_number(route_no)
+    # 세션에서 route_id 가져오기 (버스 카드에서 저장한 값)
+    route_id = st.session_state.get('selected_route_id')
+    if not route_id:
+        # 없으면 노선 번호로 조회 시도 (하위 호환성)
+        route_id = get_route_id_by_number(route_no)
 
     if not route_id:
         st.error("❌ 노선 ID를 찾을 수 없습니다.")
@@ -306,11 +269,6 @@ def _render_map_section(route_no: str) -> None:
         view_state=view_state_data
     )
     st.pydeck_chart(deck, height=500)
-
-    # 지도 재중심 버튼
-    if st.button("🎯 지도 재중심", key="recenter_map"):
-        reset_map_view_state(route_no)
-        st.rerun()
 
 
 def _render_vehicle_table(route_no: str) -> None:

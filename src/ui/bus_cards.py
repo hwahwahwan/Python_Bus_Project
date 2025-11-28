@@ -11,7 +11,8 @@ from datetime import datetime
 from src.core.session_manager import (
     get_bus_data,
     set_bus_data,
-    set_last_update
+    set_last_update,
+    set_selected_route
 )
 from src.api.bus_api import get_bus_arrival_info
 from src.utils.constants import (
@@ -39,13 +40,14 @@ def get_bus_type_icon(bus_type: str) -> str:
     return BUS_TYPE_ICONS.get(bus_type, "🔵 일반")
 
 
-def render_bus_card(bus: Dict[str, str], col) -> None:
+def render_bus_card(bus: Dict[str, str], col, idx: int) -> None:
     """
     개별 버스 정보 카드를 렌더링합니다.
 
     Args:
         bus: 버스 정보 딕셔너리
         col: Streamlit 컬럼 객체
+        idx: 버스 인덱스 (버튼 고유 키 생성용)
     """
     with col:
         # 버스 번호
@@ -69,6 +71,19 @@ def render_bus_card(bus: Dict[str, str], col) -> None:
         card_html = f'<div style="padding: 18px; border-radius: 12px; border: 1px solid #e0e0e0; background-color: white; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 12px;"><div style="display: flex; align-items: center; margin-bottom: 12px;"><span style="background-color: #2196F3; color: white; padding: 6px 14px; border-radius: 18px; font-weight: bold; font-size: 1em;">{bus_no}</span>{bus_type_badge}<span style="margin-left: auto; font-size: 0.9em;">{is_last}</span></div><p style="color: #666; font-size: 0.9em; margin: 8px 0;">{direction if direction else "방면 정보 없음"}</p><hr style="border: none; border-top: 1px solid #eee; margin: 12px 0;"><div style="margin-top: 12px;"><div style="margin-bottom: 8px;"><span style="color: #888; font-size: 0.8em;">첫 번째 버스</span><div style="font-size: 1em; font-weight: 600; color: #2196F3; margin-top: 4px;">{first_arrival}</div></div><div><span style="color: #888; font-size: 0.8em;">두 번째 버스</span><div style="font-size: 1em; font-weight: 600; color: #333; margin-top: 4px;">{second_arrival if second_arrival != DEFAULT_VALUE_NO_INFO else "정보없음"}</div></div></div></div>'
 
         st.markdown(card_html, unsafe_allow_html=True)
+
+        # 버스 추적 버튼
+        route_id = bus.get('busRouteId', '')
+        if st.button(f"🔍 {bus_no}번 추적", key=f"track_bus_{idx}_{bus_no}", use_container_width=True):
+            if route_id:
+                # 노선 번호를 저장 (버스 추적 탭에서 사용)
+                set_selected_route(bus_no)
+                # 노선 ID도 세션에 저장 (API 호출용)
+                st.session_state['selected_route_id'] = route_id
+                st.success(f"✅ {bus_no}번 선택됨. '실시간 버스 추적' 탭을 클릭하세요!")
+            else:
+                st.error(f"⚠️ 노선 ID를 찾을 수 없습니다. (busRouteId 없음)")
+            st.rerun()
 
 
 def calculate_grid_layout(num_buses: int) -> int:
@@ -157,4 +172,4 @@ def render_bus_arrival_section(ars_id: str) -> None:
 
     # 각 버스 카드 렌더링
     for idx, bus in enumerate(bus_list[:MAX_DISPLAY_BUSES]):
-        render_bus_card(bus, cols[idx % num_cols])
+        render_bus_card(bus, cols[idx % num_cols], idx)

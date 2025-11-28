@@ -45,6 +45,7 @@ def parse_bus_data(item: ET.Element) -> Dict[str, str]:
         Dict[str, str]: 파싱된 버스 정보
     """
     return {
+        'busRouteId': item.findtext('busRouteId', ''),
         'busRouteAbrv': item.findtext('busRouteAbrv', DEFAULT_VALUE_NO_INFO),
         'rtNm': item.findtext('rtNm', DEFAULT_VALUE_NO_INFO),
         'arrmsg1': item.findtext('arrmsg1', DEFAULT_VALUE_NO_INFO),
