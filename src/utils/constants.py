@@ -114,6 +114,7 @@ FIELD_DISPLAY_NAME = "display_name"
 # API
 BUS_POSITION_API_URL = "http://ws.bus.go.kr/api/rest/buspos/getBusPosByRtid"
 AUTO_REFRESH_INTERVAL_SECONDS = 60
+ANIMATION_INTERVAL_SECONDS = 0.5  # 마커 보간 새로고침 주기 (0.5초)
 
 # 노선 데이터
 ROUTE_STATIONS_DATA_PATH = "data/route_stations_processed.csv"

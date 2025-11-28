@@ -273,7 +273,8 @@ def create_current_stop_layer(stop_data: Dict) -> pdk.Layer:
 def create_bus_tracking_map(
     route_data: pd.DataFrame,
     bus_positions: List[Dict],
-    current_stop: Optional[Dict] = None
+    current_stop: Optional[Dict] = None,
+    view_state: Optional[Dict] = None
 ) -> pdk.Deck:
     """
     버스 추적용 지도를 생성합니다 (노선 경로 + 버스 위치).
@@ -282,27 +283,37 @@ def create_bus_tracking_map(
         route_data: 노선 정류장 데이터
         bus_positions: 버스 위치 데이터 리스트
         current_stop: 선택된 정류장 (Optional)
+        view_state: 지도 뷰 상태 (Optional) - {"lat": float, "lon": float, "zoom": int}
 
     Returns:
         pdk.Deck: 완성된 지도
     """
-    # 모든 좌표 수집
-    coordinates = route_data[['lat', 'lon']].values.tolist()
-    coordinates = [(lat, lon) for lat, lon in coordinates]
-
-    # 중심점 및 줌 레벨 계산
-    center_lat, center_lon = calculate_centroid(coordinates)
-    bbox = calculate_bbox(coordinates)
-    zoom = calculate_zoom_level(bbox)
-
     # 뷰 상태 생성
-    view_state = pdk.ViewState(
-        latitude=center_lat,
-        longitude=center_lon,
-        zoom=zoom,
-        pitch=0,
-        bearing=0
-    )
+    if view_state is not None:
+        # 사용자 제공 뷰 상태 사용 (줌/위치 유지)
+        view = pdk.ViewState(
+            latitude=view_state["lat"],
+            longitude=view_state["lon"],
+            zoom=view_state["zoom"],
+            pitch=0,
+            bearing=0
+        )
+    else:
+        # 기본 뷰 상태 (자동 계산)
+        coordinates = route_data[['lat', 'lon']].values.tolist()
+        coordinates = [(lat, lon) for lat, lon in coordinates]
+
+        center_lat, center_lon = calculate_centroid(coordinates)
+        bbox = calculate_bbox(coordinates)
+        zoom = calculate_zoom_level(bbox)
+
+        view = pdk.ViewState(
+            latitude=center_lat,
+            longitude=center_lon,
+            zoom=zoom,
+            pitch=0,
+            bearing=0
+        )
 
     # 레이어 생성
     layers = [create_route_path_layer(route_data)]
@@ -316,7 +327,7 @@ def create_bus_tracking_map(
     # Deck 생성
     return pdk.Deck(
         layers=layers,
-        initial_view_state=view_state,
+        initial_view_state=view,
         map_style=MAP_STYLE,
         tooltip={
             "html": "<b>{vehicle_no}</b><br/>정류장: {station_name}",

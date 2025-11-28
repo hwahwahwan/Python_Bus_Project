@@ -254,3 +254,114 @@ def update_last_api_call() -> None:
     마지막 API 호출 시간을 현재 시간으로 업데이트합니다.
     """
     st.session_state[SESSION_KEY_LAST_API_CALL] = time.time()
+
+
+# ============================================================================
+# 버스 위치 애니메이션 관련 세션 관리 (보간용)
+# ============================================================================
+
+def get_bus_position_state(route_no: str) -> Dict:
+    """
+    노선별 버스 위치 상태를 반환합니다.
+
+    Args:
+        route_no: 노선 번호
+
+    Returns:
+        Dict: {"prev": pd.DataFrame, "curr": pd.DataFrame, "last_fetch": datetime}
+    """
+    state_key = f"buspos_state_{route_no}"
+    if state_key not in st.session_state:
+        st.session_state[state_key] = {
+            "prev": None,
+            "curr": None,
+            "last_fetch": None
+        }
+    return st.session_state[state_key]
+
+
+def update_bus_position_state(route_no: str, new_positions: List[Dict]) -> None:
+    """
+    노선별 버스 위치 상태를 업데이트합니다.
+
+    Args:
+        route_no: 노선 번호
+        new_positions: 새로운 버스 위치 리스트
+    """
+    import pandas as pd
+
+    state_key = f"buspos_state_{route_no}"
+    state = get_bus_position_state(route_no)
+
+    # 리스트를 DataFrame으로 변환
+    new_df = pd.DataFrame(new_positions) if new_positions else None
+
+    # 현재를 이전으로, 새 데이터를 현재로
+    state["prev"] = state.get("curr")
+    state["curr"] = new_df
+    state["last_fetch"] = datetime.now()
+
+    st.session_state[state_key] = state
+
+
+def get_elapsed_time_since_fetch(route_no: str) -> Optional[float]:
+    """
+    마지막 API 호출 이후 경과 시간을 반환합니다.
+
+    Args:
+        route_no: 노선 번호
+
+    Returns:
+        Optional[float]: 경과 시간(초) 또는 None
+    """
+    state = get_bus_position_state(route_no)
+    last_fetch = state.get("last_fetch")
+
+    if last_fetch is None:
+        return None
+
+    return (datetime.now() - last_fetch).total_seconds()
+
+
+def get_map_view_state(route_no: str) -> Optional[Dict]:
+    """
+    노선별 지도 뷰 상태를 반환합니다.
+
+    Args:
+        route_no: 노선 번호
+
+    Returns:
+        Optional[Dict]: {"lat": float, "lon": float, "zoom": int} 또는 None
+    """
+    view_key = f"bus_view_state_{route_no}"
+    return st.session_state.get(view_key)
+
+
+def set_map_view_state(route_no: str, lat: float, lon: float, zoom: int) -> None:
+    """
+    노선별 지도 뷰 상태를 저장합니다.
+
+    Args:
+        route_no: 노선 번호
+        lat: 위도
+        lon: 경도
+        zoom: 줌 레벨
+    """
+    view_key = f"bus_view_state_{route_no}"
+    st.session_state[view_key] = {
+        "lat": lat,
+        "lon": lon,
+        "zoom": zoom
+    }
+
+
+def reset_map_view_state(route_no: str) -> None:
+    """
+    지도 뷰 상태를 초기화합니다 (재중심 버튼용).
+
+    Args:
+        route_no: 노선 번호
+    """
+    view_key = f"bus_view_state_{route_no}"
+    if view_key in st.session_state:
+        del st.session_state[view_key]

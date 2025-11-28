@@ -7,7 +7,8 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
-from typing import List, Dict
+import time
+from typing import List, Dict, Optional
 
 from src.core.data_loader import (
     get_route_list,
@@ -25,11 +26,17 @@ from src.core.session_manager import (
     toggle_auto_refresh,
     should_call_api,
     update_last_api_call,
-    get_target_stop
+    get_target_stop,
+    get_bus_position_state,
+    update_bus_position_state,
+    get_elapsed_time_since_fetch,
+    get_map_view_state,
+    set_map_view_state,
+    reset_map_view_state
 )
 from src.api.bus_api import get_bus_positions as fetch_bus_positions
 from src.ui.map_view import create_bus_tracking_map
-from src.utils.constants import AUTO_REFRESH_INTERVAL_SECONDS
+from src.utils.constants import AUTO_REFRESH_INTERVAL_SECONDS, ANIMATION_INTERVAL_SECONDS
 
 
 def render_bus_tracker() -> None:
@@ -70,33 +77,25 @@ def render_bus_tracker() -> None:
 
     # 자동 새로고침 상태 표시 및 처리
     if is_auto_refresh_enabled():
-        st.caption(f"🔄 {AUTO_REFRESH_INTERVAL_SECONDS}초마다 자동 새로고침")
+        st.caption(f"🔄 {AUTO_REFRESH_INTERVAL_SECONDS}초마다 자동 새로고침 (0.5초 간격 애니메이션)")
 
         # API 호출 시간 체크 (60초마다만)
-        if should_call_api():
+        elapsed = get_elapsed_time_since_fetch(selected_route)
+
+        if elapsed is None or elapsed >= AUTO_REFRESH_INTERVAL_SECONDS:
+            # 60초 경과 → API 호출
             _fetch_and_update_bus_positions(selected_route)
-            st.rerun()
 
     # 지도
     _render_map_section(selected_route)
 
     # 운행 차량 테이블
-    _render_vehicle_table()
+    _render_vehicle_table(selected_route)
 
-    # 자동 새로고침이 켜져있으면 자동으로 페이지 갱신
-    # 주의: 지도 줌/위치 유지를 위해 JavaScript setTimeout 사용
+    # 자동 새로고침이 켜져있으면 0.5초마다 rerun (애니메이션)
     if is_auto_refresh_enabled():
-        # 60초마다 자동 새로고침
-        components.html(
-            f"""
-            <script>
-                setTimeout(function() {{
-                    window.parent.location.reload();
-                }}, {AUTO_REFRESH_INTERVAL_SECONDS * 1000});
-            </script>
-            """,
-            height=0
-        )
+        time.sleep(ANIMATION_INTERVAL_SECONDS)  # 0.5초 대기
+        st.rerun()
 
 
 def _render_route_selector() -> None:
@@ -171,8 +170,70 @@ def _render_route_info_box(route_no: str, route_id: str, bus_count: int) -> None
     st.markdown(info_html, unsafe_allow_html=True)
 
 
+def _interpolate_positions(
+    curr_positions: Optional[List[Dict]],
+    prev_positions: Optional[List[Dict]],
+    elapsed_sec: float,
+    interval_sec: float = AUTO_REFRESH_INTERVAL_SECONDS
+) -> List[Dict]:
+    """
+    이전 위치와 현재 위치를 선형 보간합니다.
+
+    Args:
+        curr_positions: 현재 버스 위치 리스트
+        prev_positions: 이전 버스 위치 리스트
+        elapsed_sec: 경과 시간(초)
+        interval_sec: API 호출 간격(초)
+
+    Returns:
+        List[Dict]: 보간된 버스 위치 리스트
+    """
+    if not curr_positions:
+        return []
+
+    if not prev_positions:
+        return curr_positions
+
+    # 진행률 계산 (0.0 ~ 1.0)
+    f = min(max(elapsed_sec / interval_sec, 0.0), 1.0)
+
+    # DataFrame으로 변환
+    curr_df = pd.DataFrame(curr_positions)
+    prev_df = pd.DataFrame(prev_positions)
+
+    # vehicle_no를 키로 이전 위치 인덱싱
+    prev_idx = prev_df.set_index("vehicle_no", drop=False)
+
+    interpolated = []
+    for _, row in curr_df.iterrows():
+        veh_no = row.get("vehicle_no")
+
+        # 이전 위치에 해당 차량이 없으면 현재 위치 그대로 사용
+        if pd.isna(veh_no) or veh_no not in prev_idx.index:
+            interpolated.append(row.to_dict())
+            continue
+
+        prev_row = prev_idx.loc[veh_no]
+
+        # 좌표가 유효하지 않으면 현재 위치 그대로 사용
+        if (
+            pd.isna(row.get("lat")) or pd.isna(row.get("lon"))
+            or pd.isna(prev_row.get("lat")) or pd.isna(prev_row.get("lon"))
+        ):
+            interpolated.append(row.to_dict())
+            continue
+
+        # 선형 보간
+        new_row = row.to_dict()
+        new_row["lat"] = prev_row["lat"] + (row["lat"] - prev_row["lat"]) * f
+        new_row["lon"] = prev_row["lon"] + (row["lon"] - prev_row["lon"]) * f
+        interpolated.append(new_row)
+
+    return interpolated
+
+
 def _fetch_and_update_bus_positions(route_no: str) -> None:
-    """버스 위치 정보를 API에서 가져와 세션에 저장합니다."""
+    """버스 위치 정보를 API에서 가져와 세션에 저장합니다 (상태 업데이트 포함)."""
     route_id = get_route_id_by_number(route_no)
 
     if not route_id:
@@ -183,32 +244,97 @@ def _fetch_and_update_bus_positions(route_no: str) -> None:
         result = fetch_bus_positions(route_id)
 
     if result["success"]:
+        # 기존 세션 상태 업데이트 (하위 호환성)
         set_bus_positions(result["data"])
         update_last_api_call()
+
+        # 새로운 상태 업데이트 (보간용)
+        update_bus_position_state(route_no, result["data"])
+
         st.success(f"✅ {len(result['data'])}대의 버스 위치 업데이트 완료")
     else:
         st.error(result.get("error_message", "알 수 없는 오류"))
 
 
 def _render_map_section(route_no: str) -> None:
-    """지도 섹션을 렌더링합니다."""
+    """지도 섹션을 렌더링합니다 (뷰 상태 보존 + 보간된 위치 사용)."""
     st.subheader("🗺️ 지도")
 
     route_data = get_route_data(route_no)
-    bus_positions = get_bus_positions()
+
+    # 상태에서 버스 위치 가져오기
+    state = get_bus_position_state(route_no)
+    curr_positions = state.get("curr")
+    prev_positions = state.get("prev")
+
+    # 경과 시간 계산
+    elapsed = get_elapsed_time_since_fetch(route_no)
+
+    # 보간된 위치 계산
+    if curr_positions is not None and not curr_positions.empty:
+        # DataFrame을 리스트로 변환
+        curr_list = curr_positions.to_dict('records') if isinstance(curr_positions, pd.DataFrame) else curr_positions
+        prev_list = prev_positions.to_dict('records') if isinstance(prev_positions, pd.DataFrame) and prev_positions is not None else None
+
+        interpolated_positions = _interpolate_positions(
+            curr_list,
+            prev_list,
+            elapsed or 0
+        )
+    else:
+        interpolated_positions = []
 
     if route_data.empty:
         st.warning("⚠️ 노선 데이터가 없습니다.")
         return
 
-    # 단일 지도 (노선 경로 + 버스 위치)
-    deck = create_bus_tracking_map(route_data, bus_positions)
+    # 지도 뷰 상태 가져오기 또는 초기화
+    view_state_data = get_map_view_state(route_no)
+
+    if view_state_data is None and not route_data.empty:
+        # 초기 뷰 상태: 노선 중심점
+        center_lat = route_data['lat'].mean()
+        center_lon = route_data['lon'].mean()
+        zoom = 13
+        set_map_view_state(route_no, center_lat, center_lon, zoom)
+        view_state_data = {"lat": center_lat, "lon": center_lon, "zoom": zoom}
+
+    # PyDeck 지도 생성 (뷰 상태 적용)
+    deck = create_bus_tracking_map(
+        route_data,
+        interpolated_positions,
+        view_state=view_state_data
+    )
     st.pydeck_chart(deck, height=500)
 
+    # 지도 재중심 버튼
+    if st.button("🎯 지도 재중심", key="recenter_map"):
+        reset_map_view_state(route_no)
+        st.rerun()
 
-def _render_vehicle_table() -> None:
-    """운행 차량 테이블을 렌더링합니다."""
-    bus_positions = get_bus_positions()
+
+def _render_vehicle_table(route_no: str) -> None:
+    """운행 차량 테이블을 렌더링합니다 (보간된 위치 사용)."""
+    # 상태에서 버스 위치 가져오기
+    state = get_bus_position_state(route_no)
+    curr_positions = state.get("curr")
+    prev_positions = state.get("prev")
+
+    # 경과 시간 계산
+    elapsed = get_elapsed_time_since_fetch(route_no)
+
+    # 보간된 위치 계산
+    if curr_positions is not None and not curr_positions.empty:
+        curr_list = curr_positions.to_dict('records') if isinstance(curr_positions, pd.DataFrame) else curr_positions
+        prev_list = prev_positions.to_dict('records') if isinstance(prev_positions, pd.DataFrame) and prev_positions is not None else None
+
+        bus_positions = _interpolate_positions(
+            curr_list,
+            prev_list,
+            elapsed or 0
+        )
+    else:
+        bus_positions = []
 
     if not bus_positions:
         st.info("ℹ️ 운행 중인 버스가 없습니다.")
