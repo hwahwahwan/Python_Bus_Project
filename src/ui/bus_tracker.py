@@ -173,6 +173,8 @@ def _interpolate_positions(
             continue
 
         prev_row = prev_idx.loc[veh_no]
+        if isinstance(prev_row, pd.DataFrame):
+            prev_row = prev_row.iloc[0]
 
         # 좌표가 유효하지 않으면 현재 위치 그대로 사용
         if (

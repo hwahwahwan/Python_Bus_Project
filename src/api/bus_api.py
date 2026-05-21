@@ -347,13 +347,13 @@ def _parse_bus_position_data(xml_text: str) -> Dict[str, any]:
 
             bus_data = {
                 "vehicle_no": _get_xml_text(item, 'plainNo', 'N/A'),
-                "station_seq": int(_get_xml_text(item, 'sectOrd', '0')),
-                "station_name": f"{int(_get_xml_text(item, 'sectOrd', '0'))}번째 정류장",
+                "station_seq": int(_get_xml_text(item, 'stOrd', '0')),
+                "station_name": _get_xml_text(item, 'stNm', '알 수 없음'),
                 "lon": float(_get_xml_text(item, 'gpsX', '0')),
                 "lat": float(_get_xml_text(item, 'gpsY', '0')),
                 "congestion": congetion_text,
                 "bus_type": _get_xml_text(item, 'busType', '0'),
-                "low_floor": _get_xml_text(item, 'isFullFlag', '0')
+                "low_floor": "Y" if _get_xml_text(item, 'busType', '0') == "1" else "N"
             }
             buses.append(bus_data)
 

@@ -93,7 +93,7 @@ def create_map_deck(lat: float, lon: float) -> pdk.Deck:
     return pdk.Deck(
         layers=[layer],
         initial_view_state=view_state,
-        map_style='road'  # 'road', 'satellite', 'light', 'dark' 중 선택
+        map_style='light'
     )
 
 
